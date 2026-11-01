@@ -14,6 +14,11 @@ const SESSION_HOURS = 12;
 
 // --- Admin password: from the environment, else from .env, else generated once into .env ---
 if (existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
+const ON_HOST = Boolean(process.env.RENDER || process.env.NODE_ENV === 'production');
+if (!process.env.ADMIN_PASSWORD && ON_HOST) {
+  console.error('ADMIN_PASSWORD ortam değişkeni tanımlı değil. Barındırma panelinden ekleyin.');
+  process.exit(1);
+}
 if (!process.env.ADMIN_PASSWORD) {
   const generated = crypto.randomBytes(9).toString('base64url');
   const prior = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, 'utf8') : '';
@@ -24,6 +29,77 @@ if (!process.env.ADMIN_PASSWORD) {
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // --- Menu storage ---
+// The menu lives in data/menu.json. When GITHUB_TOKEN is set (on Render), every save is also committed to
+// a branch of the repo that the host does not deploy from (GITHUB_MENU_BRANCH), and the server loads the
+// menu from that branch when it starts. The host's disk can then be wiped by a redeploy without losing edits,
+// and a save never triggers a redeploy.
+const GITHUB = {
+  token: process.env.GITHUB_TOKEN,
+  repo: process.env.GITHUB_REPO,
+  branch: process.env.GITHUB_MENU_BRANCH || 'menu-data',
+  path: 'data/menu.json',
+  sha: null,
+};
+const githubOn = Boolean(GITHUB.token && GITHUB.repo);
+
+async function github(method, url, body) {
+  const res = await fetch(`https://api.github.com/repos/${GITHUB.repo}${url}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${GITHUB.token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
+}
+
+// On start: make sure the branch exists, then take the menu from it.
+async function loadMenuFromGithub() {
+  const branch = await github('GET', `/branches/${encodeURIComponent(GITHUB.branch)}`);
+  if (branch.status === 404) {
+    const main = await github('GET', '/git/ref/heads/main');
+    if (main.status !== 200) throw new Error(`GitHub: main dalı okunamadı (${main.status})`);
+    const created = await github('POST', '/git/refs', { ref: `refs/heads/${GITHUB.branch}`, sha: main.data.object.sha });
+    if (created.status !== 201) throw new Error(`GitHub: ${GITHUB.branch} dalı açılamadı (${created.status})`);
+    console.log(`GitHub: ${GITHUB.branch} dalı oluşturuldu.`);
+  } else if (branch.status !== 200) {
+    throw new Error(`GitHub: ${GITHUB.branch} dalına ulaşılamadı (${branch.status})`);
+  }
+  const file = await github('GET', `/contents/${GITHUB.path}?ref=${encodeURIComponent(GITHUB.branch)}`);
+  if (file.status !== 200) throw new Error(`GitHub: menü dosyası okunamadı (${file.status})`);
+  GITHUB.sha = file.data.sha;
+  const text = Buffer.from(file.data.content, 'base64').toString('utf8');
+  JSON.parse(text); // refuse to start from a broken file
+  await fs.writeFile(MENU_FILE, text);
+  console.log(`GitHub: menü ${GITHUB.repo}@${GITHUB.branch} dalından yüklendi.`);
+}
+
+async function pushMenuToGithub(text, message) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await github('PUT', `/contents/${GITHUB.path}`, {
+      message,
+      content: Buffer.from(text).toString('base64'),
+      sha: GITHUB.sha,
+      branch: GITHUB.branch,
+    });
+    if (res.status === 200 || res.status === 201) {
+      GITHUB.sha = res.data.content.sha;
+      return;
+    }
+    // Someone else changed the file (or our sha is stale): take the current sha and try once more.
+    if (res.status === 409 || res.status === 422) {
+      const current = await github('GET', `/contents/${GITHUB.path}?ref=${encodeURIComponent(GITHUB.branch)}`);
+      if (current.status === 200) { GITHUB.sha = current.data.sha; continue; }
+    }
+    throw new Error(`GitHub kaydı başarısız (${res.status}): ${res.data?.message || ''}`);
+  }
+  throw new Error('GitHub kaydı başarısız: dosya o sırada başka yerde değişti.');
+}
+
 let writing = Promise.resolve();
 
 async function readMenu() {
@@ -31,14 +107,29 @@ async function readMenu() {
 }
 
 // Serialises writes and swaps the file in atomically, keeping the previous version as a backup.
-function saveMenu(menu) {
-  writing = writing.then(async () => {
+// With GitHub on, the save only counts once the commit lands; otherwise the file is put back.
+function saveMenu(menu, message = 'Menü güncellendi') {
+  const next = writing.then(async () => {
+    const previous = await fs.readFile(MENU_FILE, 'utf8').catch(() => null);
+    const text = JSON.stringify(menu, null, 2) + '\n';
     const tmp = `${MENU_FILE}.tmp`;
-    await fs.copyFile(MENU_FILE, BACKUP_FILE).catch(() => {});
-    await fs.writeFile(tmp, JSON.stringify(menu, null, 2) + '\n');
+    if (previous) await fs.writeFile(BACKUP_FILE, previous);
+    await fs.writeFile(tmp, text);
     await fs.rename(tmp, MENU_FILE);
+    if (!githubOn) return;
+    try {
+      if (!GITHUB.sha) throw new Error('GitHub: menü başlangıçta yüklenemediği için kayıt kapalı');
+      await pushMenuToGithub(text, message);
+    } catch (err) {
+      if (previous) await fs.writeFile(MENU_FILE, previous);
+      console.error(err);
+      const error = new Error('Değişiklik kalıcı olarak kaydedilemedi (GitHub). Birkaç saniye sonra tekrar dene.');
+      error.status = 503;
+      throw error;
+    }
   });
-  return writing;
+  writing = next.catch(() => {});
+  return next;
 }
 
 function slugify(text) {
@@ -59,9 +150,27 @@ function parsePrice(value) {
   return Number.isFinite(n) && n >= 0 && n < 1_000_000 ? Math.round(n * 100) / 100 : null;
 }
 
-// --- Sessions (in memory; a restart signs everyone out) ---
-const sessions = new Map();
+// --- Sessions: signed cookies, so a restart or a sleeping host does not sign anyone out.
+// The key comes from the password, so changing ADMIN_PASSWORD ends every session.
+const SESSION_KEY = crypto.createHash('sha256').update(`chez-moi-session:${ADMIN_PASSWORD}`).digest();
+const revoked = new Set(); // signed-out tokens, until they expire
 const attempts = new Map();
+
+function signSession(expires) {
+  const payload = `${expires}.${crypto.randomBytes(12).toString('base64url')}`;
+  const mac = crypto.createHmac('sha256', SESSION_KEY).update(payload).digest('base64url');
+  return `${payload}.${mac}`;
+}
+
+function verifySession(token) {
+  if (!token || revoked.has(token)) return false;
+  const [expires, nonce, mac] = token.split('.');
+  if (!expires || !nonce || !mac) return false;
+  const expected = crypto.createHmac('sha256', SESSION_KEY).update(`${expires}.${nonce}`).digest('base64url');
+  const a = Buffer.from(mac);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b) && Number(expires) > Date.now();
+}
 
 function readCookie(req, name) {
   const header = req.headers.cookie || '';
@@ -73,10 +182,7 @@ function readCookie(req, name) {
 }
 
 function requireAdmin(req, res, next) {
-  const token = readCookie(req, 'cm_admin');
-  const expires = token && sessions.get(token);
-  if (!expires || expires < Date.now()) {
-    if (token) sessions.delete(token);
+  if (!verifySession(readCookie(req, 'cm_admin'))) {
     return res.status(401).json({ error: 'Oturumun süresi doldu. Lütfen yeniden giriş yap.' });
   }
   next();
@@ -91,6 +197,7 @@ function safeEqual(a, b) {
 // --- App ---
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', 1); // behind the host's proxy: real client IP for the login limit, https for Secure cookies
 app.use(express.json({ limit: '64kb' }));
 
 app.get('/api/menu', async (_req, res, next) => {
@@ -118,8 +225,7 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ error: 'Şifre yanlış. Tekrar dene.' });
   }
   attempts.delete(ip);
-  const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, now + SESSION_HOURS * 3600000);
+  const token = signSession(now + SESSION_HOURS * 3600000);
   res.set(
     'Set-Cookie',
     `cm_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_HOURS * 3600}${req.secure ? '; Secure' : ''}`
@@ -129,7 +235,7 @@ app.post('/api/login', (req, res) => {
 
 app.post('/api/logout', (req, res) => {
   const token = readCookie(req, 'cm_admin');
-  if (token) sessions.delete(token);
+  if (token) revoked.add(token);
   res.set('Set-Cookie', 'cm_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
   res.json({ ok: true });
 });
@@ -149,7 +255,7 @@ app.post('/api/categories', requireAdmin, async (req, res, next) => {
     while (menu.categories.some((c) => c.id === id)) id += '-2';
     const category = { id, name };
     menu.categories.push(category);
-    await saveMenu(menu);
+    await saveMenu(menu, `Kategori eklendi: ${name}`);
     res.status(201).json(category);
   } catch (err) {
     next(err);
@@ -165,7 +271,7 @@ app.put('/api/categories/order', requireAdmin, async (req, res, next) => {
       return res.status(400).json({ error: 'Sıralama kaydedilemedi. Sayfayı yenileyip tekrar dene.' });
     }
     menu.categories = ids.map((id) => menu.categories.find((c) => c.id === id));
-    await saveMenu(menu);
+    await saveMenu(menu, 'Kategoriler yeniden sıralandı');
     res.json(menu.categories);
   } catch (err) {
     next(err);
@@ -183,7 +289,7 @@ app.put('/api/categories/:id', requireAdmin, async (req, res, next) => {
       return res.status(409).json({ error: `“${name}” adında bir kategori zaten var.` });
     }
     category.name = name;
-    await saveMenu(menu);
+    await saveMenu(menu, `Kategori adı değişti: ${name}`);
     res.json(category);
   } catch (err) {
     next(err);
@@ -202,7 +308,7 @@ app.delete('/api/categories/:id', requireAdmin, async (req, res, next) => {
       });
     }
     menu.categories = menu.categories.filter((c) => c.id !== category.id);
-    await saveMenu(menu);
+    await saveMenu(menu, `Kategori silindi: ${category.name}`);
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -238,7 +344,7 @@ app.post('/api/items', requireAdmin, async (req, res, next) => {
       const lastIndex = menu.items.findLastIndex((i) => i.categoryId === item.categoryId);
       menu.items.splice(lastIndex === -1 ? menu.items.length : lastIndex + 1, 0, item);
     }
-    await saveMenu(menu);
+    await saveMenu(menu, `Ürün eklendi: ${item.name}`);
     res.status(201).json(item);
   } catch (err) {
     next(err);
@@ -261,7 +367,7 @@ app.put('/api/items/:id', requireAdmin, async (req, res, next) => {
     } else {
       menu.items[index] = item;
     }
-    await saveMenu(menu);
+    await saveMenu(menu, `Ürün güncellendi: ${item.name}`);
     res.json(item);
   } catch (err) {
     next(err);
@@ -274,7 +380,7 @@ app.delete('/api/items/:id', requireAdmin, async (req, res, next) => {
     const index = menu.items.findIndex((i) => i.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Bu ürün artık yok. Sayfayı yenile.' });
     const [item] = menu.items.splice(index, 1);
-    await saveMenu(menu);
+    await saveMenu(menu, `Ürün silindi: ${item.name}`);
     res.json({ ok: true, item, index });
   } catch (err) {
     next(err);
@@ -417,9 +523,25 @@ app.get('/admin', (_req, res) => res.sendFile(path.join(ROOT, 'public', 'admin',
 app.use(express.static(path.join(ROOT, 'public'), { index: false }));
 
 app.use((err, _req, res, _next) => {
+  if (err.status) return res.status(err.status).json({ error: err.message });
   console.error(err);
   res.status(500).json({ error: 'Sunucuda bir sorun oluştu, değişiklik kaydedilmedi. Tekrar dene.' });
 });
+
+// Load the saved menu from GitHub before taking requests (a few tries; the host may start before the network).
+if (githubOn) {
+  for (let attempt = 1; attempt <= 3 && !GITHUB.sha; attempt++) {
+    try {
+      await loadMenuFromGithub();
+    } catch (err) {
+      console.error(`${err.message} (deneme ${attempt}/3)`);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000 * attempt));
+    }
+  }
+  if (!GITHUB.sha) console.error('GitHub: menü yüklenemedi. Site paketteki menüyle açılıyor; panelde kayıt kapalı.');
+} else if (ON_HOST) {
+  console.warn('GITHUB_TOKEN/GITHUB_REPO tanımlı değil: paneldeki değişiklikler yeniden yayında kaybolur.');
+}
 
 app.listen(PORT, () => {
   console.log(`Chez Moi: http://localhost:${PORT}  ·  Yönetim: http://localhost:${PORT}/admin`);

@@ -21,7 +21,23 @@ npm start
 - Menü `data/menu.json` dosyasında durur. Panelden yapılan her değişiklik bu dosyaya yazılır ve bir önceki hâli `data/menu.backup.json` olarak saklanır.
 - Sitedeki menü her istekte bu dosyadan üretilir, yani panelde kaydedilen değişiklik sayfa yenilenince sitede görünür.
 - Panelde: ürün ekleme, adı/açıklamayı/fiyatı/kategoriyi değiştirme, silme (7 saniye içinde "Geri al"), arama; kategori ekleme, yeniden adlandırma, sıralama ve boş kategoriyi silme.
-- Oturumlar sunucu belleğinde tutulur: sunucu yeniden başlarsa panelde tekrar giriş yapmak gerekir.
+- Oturum 12 saat geçerlidir ve sunucu yeniden başlasa da kapanmaz. Şifre değişirse tüm oturumlar kapanır.
+
+## Yayın (Render)
+
+Site Render'da, GitHub reposuna bağlı olarak çalışır; `main` dalına her push'ta yeniden yayınlanır. Ayarlar `render.yaml` dosyasındadır.
+
+1. https://dashboard.render.com adresinde GitHub ile giriş yapın.
+2. **New → Blueprint** seçin ve `kufuank/chez-moi-karakoy` reposunu bağlayın. Render `render.yaml`'ı okur.
+3. Sizden `GITHUB_TOKEN` istenir. GitHub'da **Settings → Developer settings → Fine-grained tokens → Generate new token** ile bir anahtar oluşturun:
+   - Repository access: yalnızca `chez-moi-karakoy`
+   - Permissions → Repository permissions → **Contents: Read and write**
+4. **Apply** deyin. Yayın birkaç dakika sürer; adres `https://chez-moi-karakoy.onrender.com` gibi olur.
+5. Panel şifresi Render'da otomatik üretilir: servis → **Environment** → `ADMIN_PASSWORD`.
+
+**Menü nasıl saklanır?** Panelde yapılan her kayıt, repodaki `menu-data` dalına bir commit olarak yazılır (dal ilk açılışta otomatik oluşturulur). Sunucu her açılışta menüyü bu daldan okur. Böylece yeniden yayında ya da sunucu uyuyup uyandığında değişiklikler kaybolmaz ve kayıt yeni bir yayın tetiklemez. GitHub'a yazılamazsa kayıt yapılmaz ve panel bunu söyler.
+
+Ücretsiz planda sunucu 15 dakika boşta kalınca uyur; sonraki ilk ziyaret yaklaşık 30 saniye sürer.
 
 ## Yapı
 
