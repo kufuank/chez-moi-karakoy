@@ -9,3 +9,8 @@ data/*.tmp
 .agents/
 .impeccable/
 skills-lock.json
+
+# personal data and uploads never go into main (uploads are mirrored to the menu-data branch)
+data/private/
+data/uploads/
+data/*.backup.json

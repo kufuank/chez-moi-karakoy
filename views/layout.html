@@ -18,19 +18,20 @@
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/scenes/stage.css">
   <link rel="stylesheet" href="/css/site.css">
+  <link rel="stylesheet" href="/css/club.css">
   {{JSONLD}}
 </head>
-<body data-page="{{PAGE}}">
+<body data-page="{{PAGE}}" data-theme="{{THEME}}">
   <a class="skip sr-only" href="#icerik">İçeriğe geç</a>
 
   <header class="site-header" data-header>
-    <a class="logo" href="/" aria-label="Chez Moi Karaköy, anasayfa">
+    <a class="logo" href="{{HOME}}" aria-label="Chez Moi Karaköy, anasayfa">
       <img class="logo-dark" src="/img/src/CHEZ-LOGO-b.png" width="283" height="146" alt="">
       <img class="logo-light" src="/img/src/CHEZ-LOGO.png" width="283" height="146" alt="">
     </a>
     <nav class="site-nav" id="site-nav" aria-label="Ana menü">
       <ul>{{NAV}}</ul>
-      <a class="button button--small" href="tel:+905496003536">Rezervasyon</a>
+      {{CTA}}
     </nav>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
       <span class="nav-toggle-open">Menü</span><span class="nav-toggle-close">Kapat</span>
@@ -50,10 +51,12 @@
       <div>
         <p class="footer-first">Sayfalar</p>
         <ul>
-          <li><a href="/hakkimizda">Hakkımızda</a></li>
+          <li><a href="/restoran">Restoran</a></li>
+          <li><a href="/kulup">Kulüp</a></li>
           <li><a href="/menu">Menü</a></li>
-          <li><a href="/galeri">Galeri</a></li>
+          <li><a href="/rezervasyon">Rezervasyon</a></li>
           <li><a href="/iletisim">İletişim</a></li>
+          <li><a href="/gizlilik">Kişisel veriler</a></li>
         </ul>
       </div>
       <div>
@@ -62,6 +65,7 @@
           <li><a href="https://www.instagram.com/chezmoikarakoy/" rel="noopener" target="_blank">Instagram</a></li>
           <li><a href="mailto:chezmoikarakoy@gmail.com">chezmoikarakoy@gmail.com</a></li>
           <li><a href="tel:+905496003536">0549 600 35 36</a></li>
+          <li><a href="tel:+905368573275">0536 857 32 75</a></li>
         </ul>
       </div>
       <div>

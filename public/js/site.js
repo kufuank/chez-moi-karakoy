@@ -78,6 +78,80 @@
     lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
   }
 
+  // ---------- Forms: restaurant reservation and club guest list ----------
+  // Errors land in the form's alert line and on the field the server names; success swaps the form out.
+  async function submitForm(form, url, errorEl, onDone) {
+    const button = form.querySelector('[type="submit"]');
+    const data = Object.fromEntries(new FormData(form));
+    data.consent = form.querySelector('[name="consent"]')?.checked === true;
+    data.people = Number(data.people);
+    form.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
+    errorEl.textContent = '';
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Gönderiliyor…';
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errorEl.textContent = body.error || 'Bir sorun oluştu. Lütfen tekrar deneyin ya da bizi arayın: 0549 600 35 36';
+        const field = body.field && form.querySelector(`[name="${body.field}"]`);
+        if (field) { field.setAttribute('aria-invalid', 'true'); field.focus(); }
+        return;
+      }
+      onDone();
+    } catch {
+      errorEl.textContent = 'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin ya da bizi arayın: 0549 600 35 36';
+    } finally {
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
+
+  const bookingForm = document.getElementById('booking-form');
+  if (bookingForm) {
+    bookingForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitForm(bookingForm, '/api/reservations', document.getElementById('b-error'), () => {
+        bookingForm.hidden = true;
+        const done = document.getElementById('booking-done');
+        done.hidden = false;
+        done.focus();
+        done.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
+      });
+    });
+  }
+
+  const sheet = document.getElementById('guestlist');
+  if (sheet) {
+    const form = document.getElementById('guestlist-form');
+    const done = document.getElementById('gl-done');
+    let opener = null;
+    document.querySelectorAll('[data-guestlist]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        opener = btn;
+        form.reset();
+        form.hidden = false;
+        done.hidden = true;
+        document.getElementById('gl-error').textContent = '';
+        form.eventId.value = btn.dataset.eventId;
+        document.getElementById('gl-event').textContent = `${btn.dataset.eventTitle} · ${btn.dataset.eventDate}`;
+        sheet.showModal();
+        form.name.focus();
+      });
+    });
+    sheet.addEventListener('click', (e) => { if (e.target === sheet || e.target.closest('[data-close]')) sheet.close(); });
+    sheet.addEventListener('close', () => opener?.focus());
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitForm(form, `/api/events/${encodeURIComponent(form.eventId.value)}/guestlist`, document.getElementById('gl-error'), () => {
+        form.hidden = true;
+        done.hidden = false;
+        done.querySelector('button').focus();
+      });
+    });
+  }
+
   if (!live) return;
   gsap.registerPlugin(ScrollTrigger);
   Stage.smooth();
@@ -154,8 +228,14 @@
       gsap.to('.hero-content', { yPercent: -18, autoAlpha: 0.3, ease: 'none', scrollTrigger: { trigger: '.hero', start: '35% top', end: 'bottom top', scrub: true } });
       gsap.from('.hero-title, .hero-lede, .hero-actions, .status', { y: 40, autoAlpha: 0, duration: 1, stagger: 0.08, ease: 'power3.out', delay: 0.1 });
     }
+    if (document.querySelector('.club-hero')) {
+      gsap.fromTo('[data-hero-img]', { scale: 1.2 }, { scale: 1, duration: 1.8, ease: 'power3.out' });
+      gsap.to('.club-hero-media img', { yPercent: 14, ease: 'none', scrollTrigger: { trigger: '.club-hero', start: 'top top', end: 'bottom top', scrub: true } });
+      gsap.to('.club-hero-content', { yPercent: -18, autoAlpha: 0.3, ease: 'none', scrollTrigger: { trigger: '.club-hero', start: '35% top', end: 'bottom top', scrub: true } });
+      gsap.from('.club-title, .club-hero-content .hero-lede, .club-hero-content .hero-actions', { y: 40, autoAlpha: 0, duration: 1, stagger: 0.08, ease: 'power3.out', delay: 0.1 });
+    }
     // (yPercent and scale only: y and rotation belong to the scroll drift below)
-    gsap.from('.hero > .cut, .hero > .print, .page-collage > *', {
+    gsap.from('.hero > .cut, .hero > .print, .club-hero > .cut, .club-hero > .print, .page-collage > *', {
       yPercent: -45, scale: 0.7, autoAlpha: 0,
       duration: 1.1, stagger: 0.09, ease: 'back.out(1.4)', delay: 0.25,
     });

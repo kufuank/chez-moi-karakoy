@@ -94,7 +94,11 @@
     $('#login').hidden = true;
     $('#app').hidden = false;
     render();
+    document.dispatchEvent(new Event('cm:start')); // the other tabs (admin-club.js) load now
   }
+
+  // Shared with admin-club.js
+  window.CMAdmin = { api, toast, confirmAction, esc };
 
   // ---------- render ----------
   const icons = {

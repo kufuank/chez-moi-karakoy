@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Menü yönetimi · Chez Moi</title>
+  <title>Yönetim · Chez Moi</title>
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://api.fontshare.com">
   <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
@@ -33,15 +33,68 @@
       <div class="brand">
         <span class="brand-name">Chez Moi</span>
         <span class="brand-sep" aria-hidden="true">/</span>
-        <span>Menü yönetimi</span>
+        <span>Yönetim</span>
       </div>
       <div class="topbar-actions">
-        <a class="btn btn--ghost" href="/menu" target="_blank" rel="noopener">Sitede gör</a>
+        <a class="btn btn--ghost" href="/" target="_blank" rel="noopener">Sitede gör</a>
         <button class="btn btn--ghost" type="button" id="logout">Çıkış yap</button>
       </div>
     </header>
 
-    <div class="layout">
+    <nav class="tabs" aria-label="Yönetim bölümleri">
+      <a href="#menu" data-tab="menu">Menü</a>
+      <a href="#etkinlikler" data-tab="etkinlikler">Etkinlikler</a>
+      <a href="#rezervasyonlar" data-tab="rezervasyonlar">Rezervasyonlar <span class="badge" id="res-badge" hidden></span></a>
+      <a href="#onkayit" data-tab="onkayit">Ön kayıtlar</a>
+    </nav>
+
+    <!-- ============ EVENTS ============ -->
+    <section class="panel" id="panel-etkinlikler" data-panel="etkinlikler" hidden aria-labelledby="ev-title">
+      <div class="toolbar">
+        <h2 id="ev-title">Etkinlikler <span class="muted" id="ev-total"></span></h2>
+        <div class="toolbar-right">
+          <button class="btn btn--primary" type="button" id="new-event">Yeni etkinlik</button>
+        </div>
+      </div>
+      <div id="event-list" class="cards" aria-live="polite"></div>
+    </section>
+
+    <!-- ============ RESERVATIONS ============ -->
+    <section class="panel" id="panel-rezervasyonlar" data-panel="rezervasyonlar" hidden aria-labelledby="res-title">
+      <div class="toolbar">
+        <h2 id="res-title">Rezervasyonlar <span class="muted" id="res-total"></span></h2>
+        <div class="toolbar-right">
+          <label class="inline-select"><span>Göster</span>
+            <select id="res-filter">
+              <option value="upcoming">Bugün ve sonrası</option>
+              <option value="new">Sadece yeni</option>
+              <option value="past">Geçmiş</option>
+              <option value="all">Tümü</option>
+            </select>
+          </label>
+          <button class="btn" type="button" id="res-refresh">Yenile</button>
+          <button class="btn" type="button" id="res-csv">CSV indir</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table class="table" id="res-table"></table></div>
+      <p class="empty" id="res-empty" hidden>Bu görünümde rezervasyon yok.</p>
+    </section>
+
+    <!-- ============ GUEST LISTS ============ -->
+    <section class="panel" id="panel-onkayit" data-panel="onkayit" hidden aria-labelledby="gl-title">
+      <div class="toolbar">
+        <h2 id="gl-title">Ön kayıtlar <span class="muted" id="gl-total"></span></h2>
+        <div class="toolbar-right">
+          <label class="inline-select"><span>Etkinlik</span><select id="gl-event"></select></label>
+          <button class="btn" type="button" id="gl-refresh">Yenile</button>
+          <button class="btn" type="button" id="gl-csv">CSV indir</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table class="table" id="gl-table"></table></div>
+      <p class="empty" id="gl-empty" hidden>Bu etkinlik için henüz ön kayıt yok.</p>
+    </section>
+
+    <div class="layout panel" id="panel-menu" data-panel="menu">
       <!-- Categories -->
       <aside class="sidebar" aria-labelledby="cat-title">
         <div class="sidebar-head">
@@ -118,11 +171,52 @@
     </form>
   </dialog>
 
+  <!-- ============ EVENT DIALOG ============ -->
+  <dialog class="dialog dialog--wide" id="event-dialog" aria-labelledby="event-dialog-title">
+    <form method="dialog" id="event-form" novalidate>
+      <h2 id="event-dialog-title">Yeni etkinlik</h2>
+      <label class="field"><span class="label">Etkinlik adı</span><input name="title" required maxlength="90" autocomplete="off" aria-describedby="event-error"></label>
+      <div class="field-row field-row--3">
+        <label class="field"><span class="label">Tarih</span><input name="date" type="date" required aria-describedby="event-error"></label>
+        <label class="field"><span class="label">Başlangıç saati</span><input name="time" type="time" value="22:00" required aria-describedby="event-error"></label>
+        <label class="field"><span class="label">Kat</span>
+          <select name="floor"><option value="ikisi">Zemin kat ve roof bar</option><option value="zemin">Zemin kat</option><option value="roof">Roof bar</option></select>
+        </label>
+      </div>
+      <fieldset class="field genre-set"><legend class="label">Tür</legend><div id="genre-boxes"></div></fieldset>
+      <label class="field"><span class="label">Sanatçılar <span class="muted">(her satıra bir isim)</span></span><textarea name="lineup" rows="3"></textarea></label>
+      <label class="field"><span class="label">Açıklama <span class="muted">(isteğe bağlı)</span></span><textarea name="description" rows="3" maxlength="600"></textarea></label>
+      <div class="poster-field">
+        <div class="poster-preview" id="poster-preview" aria-live="polite">Afiş yok</div>
+        <div class="field">
+          <span class="label">Afiş <span class="muted">(JPG, PNG ya da WEBP, en fazla 3 MB)</span></span>
+          <input type="file" id="poster-file" accept="image/jpeg,image/png,image/webp">
+          <button class="btn btn--small-text" type="button" id="poster-remove" hidden>Afişi kaldır</button>
+        </div>
+      </div>
+      <fieldset class="field entry-set">
+        <legend class="label">Giriş</legend>
+        <label class="field"><span>Bilet linki <span class="muted">(Biletix, Passo, Bubilet… varsa)</span></span><input name="ticketUrl" type="url" placeholder="https://" autocomplete="off" aria-describedby="event-error"></label>
+        <label class="check-row"><input type="checkbox" name="guestlist" checked> <span>Bilet linki yoksa sitede ön kayıt al</span></label>
+        <label class="field field--narrow"><span>Ön kayıt kapasitesi <span class="muted">(kişi, boş = sınırsız)</span></span><input name="capacity" type="number" min="1" max="5000" inputmode="numeric" aria-describedby="event-error"></label>
+      </fieldset>
+      <label class="check-row"><input type="checkbox" name="published" checked> <span>Sitede yayınla</span></label>
+      <p class="error" id="event-error" role="alert" data-error></p>
+      <div class="dialog-actions">
+        <button class="btn btn--danger-ghost" type="button" id="event-delete" hidden>Etkinliği sil</button>
+        <span class="spacer"></span>
+        <button class="btn" type="button" data-close>Vazgeç</button>
+        <button class="btn btn--primary" type="submit">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite" hidden>
     <span id="toast-text"></span>
     <button class="toast-action" type="button" id="toast-action" hidden>Geri al</button>
   </div>
 
   <script src="/admin/admin.js"></script>
+  <script src="/admin/admin-club.js"></script>
 </body>
 </html>

@@ -4,10 +4,11 @@ import fs from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { jsonDoc, fileStore, githubOn } from './lib/github-store.js';
+import { records, supabaseOn } from './lib/records.js';
+import { clubRoutes, upcoming, past, todayIstanbul, FLOORS } from './lib/club.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const MENU_FILE = path.join(ROOT, 'data', 'menu.json');
-const BACKUP_FILE = path.join(ROOT, 'data', 'menu.backup.json');
 const ENV_FILE = path.join(ROOT, '.env');
 const PORT = Number(process.env.PORT) || 3000;
 const SESSION_HOURS = 12;
@@ -28,109 +29,13 @@ if (!process.env.ADMIN_PASSWORD) {
 }
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-// --- Menu storage ---
-// The menu lives in data/menu.json. When GITHUB_TOKEN is set (on Render), every save is also committed to
-// a branch of the repo that the host does not deploy from (GITHUB_MENU_BRANCH), and the server loads the
-// menu from that branch when it starts. The host's disk can then be wiped by a redeploy without losing edits,
-// and a save never triggers a redeploy.
-const GITHUB = {
-  token: process.env.GITHUB_TOKEN,
-  repo: process.env.GITHUB_REPO,
-  branch: process.env.GITHUB_MENU_BRANCH || 'menu-data',
-  path: 'data/menu.json',
-  sha: null,
-};
-const githubOn = Boolean(GITHUB.token && GITHUB.repo);
-
-async function github(method, url, body) {
-  const res = await fetch(`https://api.github.com/repos/${GITHUB.repo}${url}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${GITHUB.token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  return { status: res.status, data };
-}
-
-// On start: make sure the branch exists, then take the menu from it.
-async function loadMenuFromGithub() {
-  const branch = await github('GET', `/branches/${encodeURIComponent(GITHUB.branch)}`);
-  if (branch.status === 404) {
-    const main = await github('GET', '/git/ref/heads/main');
-    if (main.status !== 200) throw new Error(`GitHub: main dalı okunamadı (${main.status})`);
-    const created = await github('POST', '/git/refs', { ref: `refs/heads/${GITHUB.branch}`, sha: main.data.object.sha });
-    if (created.status !== 201) throw new Error(`GitHub: ${GITHUB.branch} dalı açılamadı (${created.status})`);
-    console.log(`GitHub: ${GITHUB.branch} dalı oluşturuldu.`);
-  } else if (branch.status !== 200) {
-    throw new Error(`GitHub: ${GITHUB.branch} dalına ulaşılamadı (${branch.status})`);
-  }
-  const file = await github('GET', `/contents/${GITHUB.path}?ref=${encodeURIComponent(GITHUB.branch)}`);
-  if (file.status !== 200) throw new Error(`GitHub: menü dosyası okunamadı (${file.status})`);
-  GITHUB.sha = file.data.sha;
-  const text = Buffer.from(file.data.content, 'base64').toString('utf8');
-  JSON.parse(text); // refuse to start from a broken file
-  await fs.writeFile(MENU_FILE, text);
-  console.log(`GitHub: menü ${GITHUB.repo}@${GITHUB.branch} dalından yüklendi.`);
-}
-
-async function pushMenuToGithub(text, message) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await github('PUT', `/contents/${GITHUB.path}`, {
-      message,
-      content: Buffer.from(text).toString('base64'),
-      sha: GITHUB.sha,
-      branch: GITHUB.branch,
-    });
-    if (res.status === 200 || res.status === 201) {
-      GITHUB.sha = res.data.content.sha;
-      return;
-    }
-    // Someone else changed the file (or our sha is stale): take the current sha and try once more.
-    if (res.status === 409 || res.status === 422) {
-      const current = await github('GET', `/contents/${GITHUB.path}?ref=${encodeURIComponent(GITHUB.branch)}`);
-      if (current.status === 200) { GITHUB.sha = current.data.sha; continue; }
-    }
-    throw new Error(`GitHub kaydı başarısız (${res.status}): ${res.data?.message || ''}`);
-  }
-  throw new Error('GitHub kaydı başarısız: dosya o sırada başka yerde değişti.');
-}
-
-let writing = Promise.resolve();
-
-async function readMenu() {
-  return JSON.parse(await fs.readFile(MENU_FILE, 'utf8'));
-}
-
-// Serialises writes and swaps the file in atomically, keeping the previous version as a backup.
-// With GitHub on, the save only counts once the commit lands; otherwise the file is put back.
-function saveMenu(menu, message = 'Menü güncellendi') {
-  const next = writing.then(async () => {
-    const previous = await fs.readFile(MENU_FILE, 'utf8').catch(() => null);
-    const text = JSON.stringify(menu, null, 2) + '\n';
-    const tmp = `${MENU_FILE}.tmp`;
-    if (previous) await fs.writeFile(BACKUP_FILE, previous);
-    await fs.writeFile(tmp, text);
-    await fs.rename(tmp, MENU_FILE);
-    if (!githubOn) return;
-    try {
-      if (!GITHUB.sha) throw new Error('GitHub: menü başlangıçta yüklenemediği için kayıt kapalı');
-      await pushMenuToGithub(text, message);
-    } catch (err) {
-      if (previous) await fs.writeFile(MENU_FILE, previous);
-      console.error(err);
-      const error = new Error('Değişiklik kalıcı olarak kaydedilemedi (GitHub). Birkaç saniye sonra tekrar dene.');
-      error.status = 503;
-      throw error;
-    }
-  });
-  writing = next.catch(() => {});
-  return next;
-}
+// --- Storage: menu and events as JSON documents (mirrored to GitHub), personal data in Supabase ---
+const menuDoc = jsonDoc(ROOT, "data/menu.json");
+const eventsDoc = jsonDoc(ROOT, "data/events.json", { events: [] });
+const posters = fileStore(ROOT, "data/uploads");
+const db = records(ROOT);
+const readMenu = () => menuDoc.read();
+const saveMenu = (menu, message = "Menü güncellendi") => menuDoc.save(menu, message);
 
 function slugify(text) {
   const map = { ç: 'c', ğ: 'g', ı: 'i', İ: 'i', ö: 'o', ş: 's', ü: 'u', Ç: 'c', Ğ: 'g', Ö: 'o', Ş: 's', Ü: 'u' };
@@ -241,6 +146,8 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/session', requireAdmin, (_req, res) => res.json({ ok: true }));
+
+clubRoutes({ app, eventsDoc, posters, db, requireAdmin });
 
 // Categories
 app.post('/api/categories', requireAdmin, async (req, res, next) => {
@@ -474,50 +381,146 @@ function renderJsonLd(menu) {
   return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 }
 
-// Pages: views/<page>.html is placed into views/layout.html. Placeholders: {{MENU}}, {{MENU_NAV}}, {{DISH:<item id>}}.
-const PAGES = {
-  '/': { view: 'home', nav: '', title: 'Chez Moi Karaköy · Kafe, restoran, bar ve meyhane', description: "Chez Moi, Karaköy Mumhane Caddesi'nde 1870'ten kalma bir binanın beş katında kafe, restoran, bistro, bar ve teras meyhane. Her gün 12:00 – 05:00." },
-  '/hakkimizda': { view: 'hakkimizda', nav: 'hakkimizda', title: 'Hakkımızda · Chez Moi Karaköy', description: "Fransızca'da “benim evim”: 1870'ten kalma bir binada, 2016'dan beri Karaköy'de." },
-  '/menu': { view: 'menu', nav: 'menu', title: 'Menü · Chez Moi Karaköy', description: 'Fransız, İtalyan ve Osmanlı mutfağından tabaklar; kahvaltı, makarnalar, pizzalar ve tatlılar. Güncel fiyatlarla Chez Moi menüsü.' },
-  '/galeri': { view: 'galeri', nav: 'galeri', title: 'Galeri · Chez Moi Karaköy', description: "Chez Moi'nin salonlarından ve mutfağından kareler." },
-  '/iletisim': { view: 'iletisim', nav: 'iletisim', title: 'İletişim · Chez Moi Karaköy', description: 'Mumhane Caddesi No:36, Karaköy. Her gün 12:00 – 05:00. Rezervasyon: 0549 600 35 36.' },
-};
-const NAV = [
+// --- Pages ---------------------------------------------------------------------------------------------
+// views/<view>.html goes into views/layout.html (views/gate.html is a page of its own).
+// Placeholders: {{MENU}}, {{MENU_NAV}}, {{DISH:<item id>}}, {{EVENTS}}, {{PAST_EVENTS}}, {{ARTISTS}},
+// {{TODAY}}, {{MAX_DATE}}.
+const trDate = (iso, opts) => new Intl.DateTimeFormat('tr-TR', { timeZone: 'UTC', ...opts }).format(new Date(`${iso}T00:00:00Z`));
+const FALLBACK_POSTERS = ['night-crowd', 'night-party', 'night-bar', 'night-toast'];
+
+function renderEvents(events) {
+  const list = upcoming(events);
+  if (!list.length) {
+    return `<div class="events-empty" data-reveal>
+        <p class="head">Yeni geceler yakında açıklanacak.</p>
+        <p>Programı ilk duyan olmak için Instagram'da <a href="https://www.instagram.com/chezmoikarakoy/" rel="noopener" target="_blank">@chezmoikarakoy</a> hesabını takip edin.</p>
+      </div>`;
+  }
+  return list
+    .map((e, i) => {
+      const poster = e.poster
+        ? `<img src="/uploads/${escapeHtml(e.poster)}" alt="${escapeHtml(e.title)} afişi" loading="lazy">`
+        : `<img src="/img/torn/${FALLBACK_POSTERS[i % FALLBACK_POSTERS.length]}.png" alt="" loading="lazy">`;
+      const meta = [FLOORS[e.floor], e.genres.join(', ')].filter(Boolean).join(' · ');
+      const longDate = trDate(e.date, { day: 'numeric', month: 'long', weekday: 'long' });
+      const action = e.ticketUrl
+        ? `<a class="button" href="${escapeHtml(e.ticketUrl)}" target="_blank" rel="noopener">Bilet al</a>`
+        : e.guestlist
+          ? `<button class="button" type="button" data-guestlist data-event-id="${e.id}" data-event-title="${escapeHtml(e.title)}" data-event-date="${escapeHtml(longDate)}">Ön kayıt ol</button>`
+          : '<p class="event-door">Giriş kapıda.</p>';
+      return `
+      <article class="event" data-reveal>
+        <figure class="event-poster${e.poster ? ' event-poster--own' : ''}">${poster}<span class="tape tape--top"></span></figure>
+        <div class="event-body">
+          <h3 class="event-title">${escapeHtml(e.title)}</h3>
+          <p class="event-date"><span class="event-day">${trDate(e.date, { day: 'numeric' })}</span><span>${trDate(e.date, { month: 'long' })} · ${trDate(e.date, { weekday: 'long' })} · ${escapeHtml(e.time)}</span></p>
+          ${meta ? `<p class="event-meta">${escapeHtml(meta)}</p>` : ''}
+          ${e.lineup.length ? `<p class="event-lineup">${e.lineup.map(escapeHtml).join(' <i class="dot"></i> ')}</p>` : ''}
+          ${e.description ? `<p class="event-desc">${escapeHtml(e.description)}</p>` : ''}
+          <div class="event-action">${action}</div>
+        </div>
+      </article>`;
+    })
+    .join('');
+}
+
+function renderPastEvents(events) {
+  const list = past(events).slice(0, 8);
+  if (!list.length) return '';
+  return `<section class="past" aria-labelledby="past-title">
+      <h2 class="head" id="past-title" data-reveal>Geçmiş geceler</h2>
+      <ul class="past-list">${list
+        .map((e) => `<li data-reveal><span class="past-date">${trDate(e.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span><span class="past-title">${escapeHtml(e.title)}</span><span class="past-lineup">${e.lineup.map(escapeHtml).join(', ')}</span></li>`)
+        .join('')}</ul>
+    </section>`;
+}
+
+function renderArtists(events) {
+  const names = [...new Set(events.filter((e) => e.published).flatMap((e) => e.lineup))];
+  if (!names.length) return '';
+  return `<section class="artists" aria-labelledby="artists-title">
+      <h2 class="display" id="artists-title" data-reveal>Bu sahnede çalanlar</h2>
+      <p class="artists-list" data-reveal>${names.map((n) => `<span>${escapeHtml(n)}</span>`).join(' <i class="dot"></i> ')}</p>
+    </section>`;
+}
+
+const RESTAURANT_NAV = [
   ['hakkimizda', '/hakkimizda', 'Hakkımızda'],
   ['menu', '/menu', 'Menü'],
   ['galeri', '/galeri', 'Galeri'],
   ['iletisim', '/iletisim', 'İletişim'],
+  ['kulup', '/kulup', 'Kulüp'],
+];
+const CLUB_NAV = [
+  ['', '/kulup#etkinlikler', 'Etkinlikler'],
+  ['', '/kulup#geceler', 'Geceler'],
+  ['', '/kulup#bilgi', 'Bilgi'],
+  ['restoran', '/restoran', 'Restoran'],
 ];
 
+const PAGES = {
+  '/restoran': { view: 'home', nav: '', title: 'Chez Moi Karaköy · Restoran, kafe ve meyhane', description: "Chez Moi, Karaköy Mumhane Caddesi'nde 1870'ten kalma bir binanın beş katında kafe, restoran, bistro, bar ve teras meyhane. Her gün 12:00 – 05:00." },
+  '/hakkimizda': { view: 'hakkimizda', nav: 'hakkimizda', title: 'Hakkımızda · Chez Moi Karaköy', description: "Fransızca'da “benim evim”: 1870'ten kalma bir binada, 2016'dan beri Karaköy'de." },
+  '/menu': { view: 'menu', nav: 'menu', title: 'Menü · Chez Moi Karaköy', description: 'Fransız, İtalyan ve Osmanlı mutfağından tabaklar; kahvaltı, makarnalar, pizzalar ve tatlılar. Güncel fiyatlarla Chez Moi menüsü.' },
+  '/galeri': { view: 'galeri', nav: 'galeri', title: 'Galeri · Chez Moi Karaköy', description: "Chez Moi'nin salonlarından ve mutfağından kareler." },
+  '/iletisim': { view: 'iletisim', nav: 'iletisim', title: 'İletişim · Chez Moi Karaköy', description: 'Mumhane Caddesi No:36, Karaköy. Her gün 12:00 – 05:00. Rezervasyon: 0549 600 35 36.' },
+  '/rezervasyon': { view: 'rezervasyon', nav: '', title: 'Rezervasyon · Chez Moi Karaköy', description: 'Chez Moi Karaköy için masa ayırtın. Talebinizi alıp sizi arayarak onaylıyoruz.' },
+  '/gizlilik': { view: 'gizlilik', nav: '', title: 'Kişisel verilerin korunması · Chez Moi Karaköy', description: 'Rezervasyon ve ön kayıt formlarında paylaştığınız bilgilerin nasıl kullanıldığı.' },
+  '/kulup': { view: 'kulup', nav: '', club: true, title: 'Kulüp · Chez Moi Karaköy geceleri', description: "Akşam saatlerinde Chez Moi'nin zemin katı ve roof barı kulübe dönüşüyor: yerli ve yabancı DJ'ler, elektronik, pop ve indie geceleri." },
+};
+
+async function renderPage(page) {
+  const [layout, body, menu, eventsData] = await Promise.all([
+    fs.readFile(path.join(ROOT, 'views', 'layout.html'), 'utf8'),
+    fs.readFile(path.join(ROOT, 'views', `${page.view}.html`), 'utf8'),
+    readMenu(),
+    eventsDoc.read(),
+  ]);
+  const events = eventsData.events;
+  const navItems = page.club ? CLUB_NAV : RESTAURANT_NAV;
+  const nav = navItems.map(([key, href, label]) => `<li><a href="${href}"${key && key === page.nav ? ' aria-current="page"' : ''}>${label}</a></li>`).join('');
+  const cta = page.club
+    ? '<a class="button button--small" href="/kulup#etkinlikler">Ön kayıt</a>'
+    : '<a class="button button--small" href="/rezervasyon">Rezervasyon</a>';
+  const today = todayIstanbul();
+  const maxDate = new Date(Date.parse(`${today}T00:00:00Z`) + 90 * 86400000).toISOString().slice(0, 10);
+  const filled = body
+    .replace('{{MENU}}', () => renderMenu(menu))
+    .replace('{{MENU_NAV}}', () => renderMenuNav(menu))
+    .replace('{{EVENTS}}', () => renderEvents(events))
+    .replace('{{PAST_EVENTS}}', () => renderPastEvents(events))
+    .replace('{{ARTISTS}}', () => renderArtists(events))
+    .replaceAll('{{TODAY}}', today)
+    .replaceAll('{{MAX_DATE}}', maxDate)
+    .replace(/\{\{DISH:(\w+)\}\}/g, (_m, id) => renderDish(menu, id));
+  return layout
+    .replace(/\{\{TITLE\}\}/g, escapeHtml(page.title))
+    .replace(/\{\{DESCRIPTION\}\}/g, escapeHtml(page.description))
+    .replace('{{PAGE}}', page.view)
+    .replace('{{THEME}}', page.club ? 'club' : 'restaurant')
+    .replace('{{HOME}}', page.club ? '/kulup' : '/restoran')
+    .replace('{{NAV}}', nav)
+    .replace('{{CTA}}', cta)
+    .replace('{{JSONLD}}', () => (page.view === 'home' || page.view === 'menu' ? renderJsonLd(menu) : ''))
+    .replace('{{BODY}}', () => filled);
+}
+
 for (const [route, page] of Object.entries(PAGES)) {
-  app.get(route === '/' ? ['/', '/index.html'] : [route, `${route}/`], async (_req, res, next) => {
+  app.get([route, `${route}/`], async (_req, res, next) => {
     try {
-      const [layout, body, menu] = await Promise.all([
-        fs.readFile(path.join(ROOT, 'views', 'layout.html'), 'utf8'),
-        fs.readFile(path.join(ROOT, 'views', `${page.view}.html`), 'utf8'),
-        readMenu(),
-      ]);
-      const nav = NAV.map(
-        ([key, href, label]) => `<li><a href="${href}"${key === page.nav ? ' aria-current="page"' : ''}>${label}</a></li>`
-      ).join('');
-      const filled = body
-        .replace('{{MENU}}', () => renderMenu(menu))
-        .replace('{{MENU_NAV}}', () => renderMenuNav(menu))
-        .replace(/\{\{DISH:(\w+)\}\}/g, (_m, id) => renderDish(menu, id));
-      const html = layout
-        .replace(/\{\{TITLE\}\}/g, escapeHtml(page.title))
-        .replace(/\{\{DESCRIPTION\}\}/g, escapeHtml(page.description))
-        .replace('{{PAGE}}', page.view)
-        .replace('{{NAV}}', nav)
-        .replace('{{JSONLD}}', () => (page.view === 'home' || page.view === 'menu' ? renderJsonLd(menu) : ''))
-        .replace('{{BODY}}', () => filled);
       res.set('Cache-Control', 'no-cache');
-      res.type('html').send(html);
+      res.type('html').send(await renderPage(page));
     } catch (err) {
       next(err);
     }
   });
 }
+
+// The door: restaurant or club
+app.get(['/', '/index.html'], (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(path.join(ROOT, 'views', 'gate.html'));
+});
 
 app.get('/admin', (_req, res) => res.sendFile(path.join(ROOT, 'public', 'admin', 'index.html')));
 app.use(express.static(path.join(ROOT, 'public'), { index: false }));
@@ -528,20 +531,23 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Sunucuda bir sorun oluştu, değişiklik kaydedilmedi. Tekrar dene.' });
 });
 
-// Load the saved menu from GitHub before taking requests (a few tries; the host may start before the network).
-if (githubOn) {
-  for (let attempt = 1; attempt <= 3 && !GITHUB.sha; attempt++) {
-    try {
-      await loadMenuFromGithub();
-    } catch (err) {
-      console.error(`${err.message} (deneme ${attempt}/3)`);
-      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000 * attempt));
-    }
+// Load the saved documents from GitHub before taking requests.
+await Promise.all([menuDoc.load(), eventsDoc.load()]);
+if (ON_HOST && !githubOn()) console.warn("GITHUB_TOKEN/GITHUB_REPO tanımlı değil: paneldeki değişiklikler yeniden yayında kaybolur.");
+// Personal data is kept for 90 days after the visit, then deleted (as /gizlilik says). Checked at start and daily.
+async function purgeOldRecords() {
+  const cutoff = new Date(Date.parse(`${todayIstanbul()}T00:00:00Z`) - 90 * 86400000).toISOString().slice(0, 10);
+  try {
+    const a = await db.purgeBefore('reservations', 'date', cutoff);
+    const b = await db.purgeBefore('guestlist', 'event_date', cutoff);
+    if (a || b) console.log(`Eski kayıtlar silindi: ${a} rezervasyon, ${b} ön kayıt (${cutoff} öncesi).`);
+  } catch (err) {
+    console.error('Eski kayıtlar silinemedi:', err.message);
   }
-  if (!GITHUB.sha) console.error('GitHub: menü yüklenemedi. Site paketteki menüyle açılıyor; panelde kayıt kapalı.');
-} else if (ON_HOST) {
-  console.warn('GITHUB_TOKEN/GITHUB_REPO tanımlı değil: paneldeki değişiklikler yeniden yayında kaybolur.');
 }
+purgeOldRecords();
+setInterval(purgeOldRecords, 24 * 3600000).unref();
+if (ON_HOST && !supabaseOn()) console.warn("SUPABASE_URL/SUPABASE_SERVICE_KEY tanımlı değil: rezervasyon ve ön kayıtlar geçici diske yazılıyor.");
 
 app.listen(PORT, () => {
   console.log(`Chez Moi: http://localhost:${PORT}  ·  Yönetim: http://localhost:${PORT}/admin`);
