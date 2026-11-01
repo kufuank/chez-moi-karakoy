@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Menü yönetimi · Chez Moi</title>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=gambarino@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <!-- ============ LOGIN ============ -->
+  <main class="login" id="login" hidden>
+    <form class="login-card" id="login-form" novalidate>
+      <h1 class="login-title">Chez Moi</h1>
+      <p class="login-sub">Menü yönetimi</p>
+      <label class="field">
+        <span class="label">Şifre</span>
+        <input type="password" name="password" id="password" autocomplete="current-password" required aria-describedby="login-error">
+      </label>
+      <p class="error" id="login-error" role="alert"></p>
+      <button class="btn btn--primary btn--block" type="submit">Giriş yap</button>
+    </form>
+  </main>
+
+  <!-- ============ APP ============ -->
+  <div class="app" id="app" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-name">Chez Moi</span>
+        <span class="brand-sep" aria-hidden="true">/</span>
+        <span>Menü yönetimi</span>
+      </div>
+      <div class="topbar-actions">
+        <a class="btn btn--ghost" href="/menu" target="_blank" rel="noopener">Sitede gör</a>
+        <button class="btn btn--ghost" type="button" id="logout">Çıkış yap</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Categories -->
+      <aside class="sidebar" aria-labelledby="cat-title">
+        <div class="sidebar-head">
+          <h2 id="cat-title">Kategoriler</h2>
+          <span class="muted" id="cat-total"></span>
+        </div>
+        <ul class="cat-list" id="cat-list"></ul>
+        <form class="cat-add" id="cat-add">
+          <label class="sr-only" for="cat-new">Yeni kategori adı</label>
+          <input id="cat-new" name="name" placeholder="Yeni kategori adı" maxlength="60" autocomplete="off">
+          <button class="btn" type="submit">Ekle</button>
+        </form>
+      </aside>
+
+      <!-- Items -->
+      <section class="main" aria-labelledby="items-title">
+        <div class="toolbar">
+          <h2 id="items-title">Ürünler <span class="muted" id="item-total"></span></h2>
+          <div class="toolbar-right">
+            <label class="search">
+              <span class="sr-only">Ürünlerde ara</span>
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.8"/></svg>
+              <input type="search" id="search" placeholder="Ürün ara" autocomplete="off">
+            </label>
+            <button class="btn btn--primary" type="button" id="new-item">Yeni ürün</button>
+          </div>
+        </div>
+        <div id="groups" class="groups" aria-live="polite"></div>
+        <p class="empty" id="no-results" hidden>Aramanla eşleşen ürün yok.</p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ ITEM DIALOG ============ -->
+  <dialog class="dialog" id="item-dialog" aria-labelledby="item-dialog-title">
+    <form method="dialog" id="item-form" novalidate>
+      <h2 id="item-dialog-title">Yeni ürün</h2>
+      <label class="field">
+        <span class="label">Ürün adı</span>
+        <input name="name" required maxlength="90" autocomplete="off" aria-describedby="item-error">
+      </label>
+      <div class="field-row">
+        <label class="field">
+          <span class="label">Fiyat (₺)</span>
+          <input name="price" inputmode="decimal" required autocomplete="off" aria-describedby="price-hint item-error">
+          <span class="hint" id="price-hint">Örnek: 245 ya da 245,50</span>
+        </label>
+        <label class="field">
+          <span class="label">Kategori</span>
+          <select name="categoryId" required></select>
+        </label>
+      </div>
+      <label class="field">
+        <span class="label">Açıklama <span class="muted">(isteğe bağlı)</span></span>
+        <textarea name="description" rows="3" maxlength="300"></textarea>
+      </label>
+      <p class="error" id="item-error" role="alert" data-error></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-close>Vazgeç</button>
+        <button class="btn btn--primary" type="submit">Ürünü ekle</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ============ CONFIRM DIALOG ============ -->
+  <dialog class="dialog dialog--small" id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text"></p>
+      <div class="dialog-actions">
+        <button class="btn" value="cancel">Vazgeç</button>
+        <button class="btn btn--danger" value="ok" id="confirm-ok">Sil</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toast-text"></span>
+    <button class="toast-action" type="button" id="toast-action" hidden>Geri al</button>
+  </div>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

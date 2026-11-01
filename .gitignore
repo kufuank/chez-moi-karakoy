@@ -1,0 +1,11 @@
+node_modules/
+.env
+data/menu.backup.json
+data/*.tmp
+
+# local tooling, not part of the site
+.taste-skill/
+.claude/
+.agents/
+.impeccable/
+skills-lock.json

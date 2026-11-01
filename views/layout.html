@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <meta name="description" content="{{DESCRIPTION}}">
+  <meta name="theme-color" content="#171513">
+  <meta property="og:title" content="{{TITLE}}">
+  <meta property="og:description" content="{{DESCRIPTION}}">
+  <meta property="og:image" content="/img/hero-hall.jpg">
+  <meta property="og:locale" content="tr_TR">
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <script>document.documentElement.classList.add('js')</script>
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=gambarino@400&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/scenes/stage.css">
+  <link rel="stylesheet" href="/css/site.css">
+  {{JSONLD}}
+</head>
+<body data-page="{{PAGE}}">
+  <a class="skip sr-only" href="#icerik">İçeriğe geç</a>
+
+  <header class="site-header" data-header>
+    <a class="logo" href="/" aria-label="Chez Moi Karaköy, anasayfa">
+      <img class="logo-dark" src="/img/src/CHEZ-LOGO-b.png" width="283" height="146" alt="">
+      <img class="logo-light" src="/img/src/CHEZ-LOGO.png" width="283" height="146" alt="">
+    </a>
+    <nav class="site-nav" id="site-nav" aria-label="Ana menü">
+      <ul>{{NAV}}</ul>
+      <a class="button button--small" href="tel:+905496003536">Rezervasyon</a>
+    </nav>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+      <span class="nav-toggle-open">Menü</span><span class="nav-toggle-close">Kapat</span>
+    </button>
+  </header>
+
+  <main id="icerik">
+{{BODY}}
+  </main>
+
+  <footer class="footer">
+    <div class="footer-cols">
+      <div>
+        <p class="footer-first">Adres</p>
+        <p>Kemankeş Karamustafa Paşa Mah.<br>Mumhane Cad. No:36<br>Beyoğlu, İstanbul</p>
+      </div>
+      <div>
+        <p class="footer-first">Sayfalar</p>
+        <ul>
+          <li><a href="/hakkimizda">Hakkımızda</a></li>
+          <li><a href="/menu">Menü</a></li>
+          <li><a href="/galeri">Galeri</a></li>
+          <li><a href="/iletisim">İletişim</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-first">Bize ulaşın</p>
+        <ul>
+          <li><a href="https://www.instagram.com/chezmoikarakoy/" rel="noopener" target="_blank">Instagram</a></li>
+          <li><a href="mailto:chezmoikarakoy@gmail.com">chezmoikarakoy@gmail.com</a></li>
+          <li><a href="tel:+905496003536">0549 600 35 36</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-first">Saatler</p>
+        <p>Her gün<br>12:00 – 05:00</p>
+      </div>
+    </div>
+    <img class="footer-cut cut" src="/img/cut/fettuccine.png" width="1361" height="1361" alt="" loading="lazy" data-speed="-0.25" data-spin="20">
+    <div class="footer-mark">
+      <svg viewBox="0 0 1000 214" role="img" aria-label="Chez Moi">
+        <text x="0" y="168">Chez Moi</text>
+      </svg>
+      <p class="legal">© <span data-year>2026</span> Chez Moi Karaköy</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+  <script src="/scenes/stage.js"></script>
+  <script src="/js/site.js"></script>
+</body>
+</html>
