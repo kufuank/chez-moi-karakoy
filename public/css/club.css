@@ -202,22 +202,32 @@ body[data-theme="club"] .sheet .form input, body[data-theme="club"] .sheet .form
 
 /* ================= NARROW ================= */
 @media (max-width: 900px) {
+  /* Stacked doors: the two halves share the screen above an address strip that sits in the flow,
+     so nothing is laid over a button. Title, then air, then the button. */
   .gate { flex-direction: column; }
-  .door { min-height: 50svh; flex-basis: 50svh; }
-  .door:hover, .door:focus-visible { flex-grow: 1.15; }
-  .door-title { font-size: clamp(3.5rem, 16vw, 6rem); }
+  .door { flex: 1 1 0; min-height: 0; }
+  .door:hover, .door:focus-within { flex-grow: 1; }
+  .door-text {
+    max-width: none; width: 100%;
+    justify-items: center; text-align: center;
+    gap: 0; padding: 24px 24px 32px;
+  }
+  .door-title { font-size: clamp(3rem, 13vw, 4.75rem); line-height: 0.95; padding-bottom: 0.04em; }
   .door-sub { display: none; }
-  .door-text { padding: 20px 20px 28px; gap: 12px; }
-  .door--day .door-text { padding-top: 96px; }
-  .door-cut--pasta, .door-print { display: none; }
-  .door-cut--plate { width: 30vw; top: auto; bottom: 10%; right: auto; left: 4vw; }
-  .door-cut--glass { width: 16vw; top: auto; bottom: 14%; right: 4vw; }
-  .gate-foot { white-space: normal; text-align: center; width: 90%; bottom: 8px; }
-  .gate-title { font-size: 1.5rem; }
-  .door-text { max-width: none; width: 100%; justify-items: center; text-align: center; }
-  .door-go { justify-self: center; }
-  .booking-form, .booking .form-done { rotate: 0deg; }
+  .door-go { justify-self: center; margin-top: clamp(20px, 3.2svh, 32px); min-height: 50px; padding: 0 24px; }
   .door--day .door-text { padding-top: 132px; }
+  .door-cut--pasta, .door-print { display: none; }
+  .door-cut--plate { width: 28vw; top: auto; bottom: 12%; right: auto; left: 4vw; }
+  .door-cut--glass { width: 15vw; top: auto; bottom: 14%; right: 5vw; }
+  .gate-head { top: 20px; gap: 8px; }
+  .gate-logo { height: 44px; }
+  .gate-title { font-size: 1.375rem; }
+  .gate-foot {
+    position: static; translate: none; width: 100%;
+    padding: 14px 24px 18px; text-align: center; white-space: normal;
+    background: var(--ink); line-height: 1.5;
+  }
+  .booking-form, .booking .form-done { rotate: 0deg; }
 
   .club-print-a { width: 32vw; top: calc(var(--header-h) + 20px); right: 5vw; }
   .club-print-b { display: none; }
