@@ -97,6 +97,7 @@
         history.replaceState(null, '', a.getAttribute('href'));
       });
     });
+    const chips = menuNav.querySelector('ul');
     document.querySelectorAll('.cat').forEach((cat) => {
       const link = menuNav.querySelector(`a[href="#${cat.id}"]`);
       ScrollTrigger.create({
@@ -104,7 +105,11 @@
         onToggle: (self) => {
           if (!link) return;
           link.classList.toggle('is-current', self.isActive);
-          if (self.isActive) link.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+          // Bring the chip into view inside the bar only. scrollIntoView would also scroll the page,
+          // and on phones (where the bar is not sticky) it pulled the reader back up to the bar.
+          if (self.isActive && chips.scrollWidth > chips.clientWidth) {
+            chips.scrollTo({ left: link.offsetLeft - (chips.clientWidth - link.offsetWidth) / 2, behavior: 'smooth' });
+          }
         },
       });
     });
