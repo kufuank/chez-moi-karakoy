@@ -173,7 +173,7 @@ body[data-page="home"] .site-header:not(.is-solid) .logo-light { display: block;
 .intro-text p:not(.statement) { max-width: 46ch; }
 .intro-collage { grid-column: 7 / span 6; min-height: clamp(420px, 48vw, 720px); }
 .ic-stairs { left: 0; top: 2%; width: 44%; rotate: -5deg; }
-.ic-building { right: 4%; top: -4%; width: 46%; rotate: 3deg; z-index: 1; }
+.ic-building { right: 2%; top: 30%; width: 40%; rotate: 4deg; z-index: 1; }
 .ic-plate { left: 24%; bottom: -8%; width: 50%; z-index: 2; }
 
 /* ================= THEN / NOW (red field) ================= */
