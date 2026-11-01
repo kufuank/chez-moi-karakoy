@@ -8,3 +8,4 @@ dist/
 .agents/
 .impeccable/
 skills-lock.json
+data/*.backup.json
