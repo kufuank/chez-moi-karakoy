@@ -24,9 +24,19 @@ Chez Moi'nin web sitesi (restoran ve kulüp) ve yönetim paneli. Site **GitHub P
 
 ## Yayın
 
-`main` dalına her push'ta GitHub Actions (`.github/workflows/pages.yml`) siteyi derleyip GitHub Pages'e yükler. Ayrıca her gece bir kez yeniden derlenir. Adres: **https://kufuank.github.io/chez-moi-karakoy/**
+Site GitHub Pages'te, repodaki `gh-pages` dalından yayınlanır. Adres: **https://kufuank.github.io/chez-moi-karakoy/**
 
-Kendi alan adınızı (ör. chezmoikarakoy.com) bağlamak için: repo → Settings → Pages → Custom domain. Yayın iş akışı alt yolu kendisi ayarlar.
+Kod ya da tasarım değiştiğinde:
+
+```bash
+npm run deploy
+```
+
+Bu komut siteyi derler ve `gh-pages` dalına gönderir; GitHub Pages birkaç dakika içinde günceller. **Menü, etkinlik, rezervasyon ve ön kayıt değişiklikleri için yayın gerekmez**; bunlar Supabase'den canlı gelir.
+
+> GitHub hesabındaki ödeme kilidi kalkarsa yayın, her push'ta GitHub Actions ile otomatik yapılacak şekilde kurulabilir.
+
+Kendi alan adınızı (ör. chezmoikarakoy.com) bağlamak için: repo → Settings → Pages → Custom domain, ardından `BASE= npm run deploy`.
 
 ## Yönetim paneli
 
@@ -56,7 +66,7 @@ Site http://localhost:3000 adresinde açılır (canlı Supabase verisiyle).
 ## Yapı
 
 - `views/` — sayfa şablonları; `layout.html` ortak iskelet, `gate.html` giriş sayfası
-- `build.mjs` — statik derleme; `serve.mjs` — yerel önizleme
+- `build.mjs` — statik derleme; `serve.mjs` — yerel önizleme; `deploy.mjs` — GitHub Pages yayını
 - `public/js/config.js` — Supabase adresi ve herkese açık anahtar
 - `public/js/render.js` — menü ve etkinliklerin HTML'i (derleme ve tarayıcı ortak kullanır)
 - `public/js/live.js` — canlı veri ve formlar; `public/js/site.js` — gezinme ve hareket (GSAP + Lenis)
