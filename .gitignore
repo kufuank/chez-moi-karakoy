@@ -1,7 +1,6 @@
 node_modules/
+dist/
 .env
-data/menu.backup.json
-data/*.tmp
 
 # local tooling, not part of the site
 .taste-skill/
@@ -9,8 +8,3 @@ data/*.tmp
 .agents/
 .impeccable/
 skills-lock.json
-
-# personal data and uploads never go into main (uploads are mirrored to the menu-data branch)
-data/private/
-data/uploads/
-data/*.backup.json

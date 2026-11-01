@@ -44,12 +44,12 @@
         <h2 class="display" id="events-title" data-reveal>Yaklaşan geceler</h2>
         <p data-reveal>Biletli gecelerde bilet linkine yönlendiriyoruz; diğer gecelerde ön kayıt listesine adınızı yazdırın, kapıda hızlıca girin.</p>
       </div>
-      <div class="event-list">
+      <div class="event-list" id="event-list" aria-live="polite">
         {{EVENTS}}
       </div>
     </section>
 
-    {{ARTISTS}}
+    <div id="artists-slot">{{ARTISTS}}</div>
 
     <!-- ============ NIGHTS (gallery) ============ -->
     <section class="nights" id="geceler" aria-labelledby="nights-title">
@@ -64,7 +64,7 @@
       <a class="link-arrow nights-link" href="https://www.instagram.com/chezmoikarakoy/" rel="noopener" target="_blank">Instagram'da daha fazlası</a>
     </section>
 
-    {{PAST_EVENTS}}
+    <div id="past-slot">{{PAST_EVENTS}}</div>
 
     <!-- ============ INFO ============ -->
     <section class="club-info" id="bilgi" aria-labelledby="info-title">

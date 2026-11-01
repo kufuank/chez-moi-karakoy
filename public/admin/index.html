@@ -19,6 +19,10 @@
       <h1 class="login-title">Chez Moi</h1>
       <p class="login-sub">Menü yönetimi</p>
       <label class="field">
+        <span class="label">E-posta</span>
+        <input type="email" name="email" id="email" autocomplete="username" required aria-describedby="login-error">
+      </label>
+      <label class="field">
         <span class="label">Şifre</span>
         <input type="password" name="password" id="password" autocomplete="current-password" required aria-describedby="login-error">
       </label>
@@ -216,7 +220,8 @@
     <button class="toast-action" type="button" id="toast-action" hidden>Geri al</button>
   </div>
 
-  <script src="/admin/admin.js"></script>
-  <script src="/admin/admin-club.js"></script>
+  <script type="module" src="/admin/backend.js"></script>
+  <script type="module" src="/admin/admin.js"></script>
+  <script type="module" src="/admin/admin-club.js"></script>
 </body>
 </html>

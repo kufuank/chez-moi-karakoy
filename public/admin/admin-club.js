@@ -47,7 +47,7 @@
             const entry = e.ticketUrl ? 'Bilet linki' : e.guestlist ? `Ön kayıt${e.capacity ? ` · ${e.capacity} kişi` : ''}` : 'Kapıda giriş';
             return `
         <article class="ev-card${isPast ? ' is-past' : ''}" data-event="${e.id}">
-          <div class="ev-thumb">${e.poster ? `<img src="/uploads/${esc(e.poster)}" alt="">` : '<span>Afiş yok</span>'}</div>
+          <div class="ev-thumb">${e.poster ? `<img src="${esc(window.CMBackend.posterUrl(e.poster))}" alt="">` : '<span>Afiş yok</span>'}</div>
           <div class="ev-info">
             <p class="ev-date">${esc(trDate(e.date))} · ${esc(e.time)}${isPast ? ' · <span class="pill">Geçti</span>' : ''}${e.published ? '' : ' · <span class="pill pill--draft">Taslak</span>'}</p>
             <h3>${esc(e.title)}</h3>
@@ -73,7 +73,7 @@
 
   function setPoster(name) {
     poster = name;
-    $('#poster-preview').innerHTML = name ? `<img src="/uploads/${esc(name)}" alt="Seçili afiş">` : 'Afiş yok';
+    $('#poster-preview').innerHTML = name ? `<img src="${esc(window.CMBackend.posterUrl(name))}" alt="Seçili afiş">` : 'Afiş yok';
     $('#poster-remove').hidden = !name;
   }
 
@@ -110,10 +110,8 @@
     if (file.size > 3 * 1024 * 1024) { $('#event-error').textContent = 'Afiş en fazla 3 MB olabilir.'; e.target.value = ''; return; }
     $('#poster-preview').textContent = 'Yükleniyor…';
     try {
-      const res = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file, credentials: 'same-origin' });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || 'Afiş yüklenemedi.');
-      setPoster(body.name);
+      const { name } = await window.CMBackend.uploadPoster(file);
+      setPoster(name);
     } catch (err) {
       setPoster(poster);
       $('#event-error').textContent = err.message;

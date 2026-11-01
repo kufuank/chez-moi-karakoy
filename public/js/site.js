@@ -78,115 +78,47 @@
     lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
   }
 
-  // ---------- Forms: restaurant reservation and club guest list ----------
-  // Errors land in the form's alert line and on the field the server names; success swaps the form out.
-  async function submitForm(form, url, errorEl, onDone) {
-    const button = form.querySelector('[type="submit"]');
-    const data = Object.fromEntries(new FormData(form));
-    data.consent = form.querySelector('[name="consent"]')?.checked === true;
-    data.people = Number(data.people);
-    form.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
-    errorEl.textContent = '';
-    const label = button.textContent;
-    button.disabled = true;
-    button.textContent = 'Gönderiliyor…';
-    try {
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        errorEl.textContent = body.error || 'Bir sorun oluştu. Lütfen tekrar deneyin ya da bizi arayın: 0549 600 35 36';
-        const field = body.field && form.querySelector(`[name="${body.field}"]`);
-        if (field) { field.setAttribute('aria-invalid', 'true'); field.focus(); }
-        return;
-      }
-      onDone();
-    } catch {
-      errorEl.textContent = 'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin ya da bizi arayın: 0549 600 35 36';
-    } finally {
-      button.disabled = false;
-      button.textContent = label;
-    }
-  }
-
-  const bookingForm = document.getElementById('booking-form');
-  if (bookingForm) {
-    bookingForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      submitForm(bookingForm, '/api/reservations', document.getElementById('b-error'), () => {
-        bookingForm.hidden = true;
-        const done = document.getElementById('booking-done');
-        done.hidden = false;
-        done.focus();
-        done.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
-      });
-    });
-  }
-
-  const sheet = document.getElementById('guestlist');
-  if (sheet) {
-    const form = document.getElementById('guestlist-form');
-    const done = document.getElementById('gl-done');
-    let opener = null;
-    document.querySelectorAll('[data-guestlist]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        opener = btn;
-        form.reset();
-        form.hidden = false;
-        done.hidden = true;
-        document.getElementById('gl-error').textContent = '';
-        form.eventId.value = btn.dataset.eventId;
-        document.getElementById('gl-event').textContent = `${btn.dataset.eventTitle} · ${btn.dataset.eventDate}`;
-        sheet.showModal();
-        form.name.focus();
-      });
-    });
-    sheet.addEventListener('click', (e) => { if (e.target === sheet || e.target.closest('[data-close]')) sheet.close(); });
-    sheet.addEventListener('close', () => opener?.focus());
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      submitForm(form, `/api/events/${encodeURIComponent(form.eventId.value)}/guestlist`, document.getElementById('gl-error'), () => {
-        form.hidden = true;
-        done.hidden = false;
-        done.querySelector('button').focus();
-      });
-    });
-  }
-
   if (!live) return;
   gsap.registerPlugin(ScrollTrigger);
   Stage.smooth();
 
-  // Menu category links: scroll under the sticky bar, and mark the category in view
+  // Menu category links: scroll under the sticky bar, and mark the category in view.
+  // Bound again after live.js re-renders the menu from the database (event "cm:menu").
   const menuNav = document.querySelector('.menu-nav');
   if (menuNav) {
-    menuNav.querySelectorAll('a').forEach((a) => {
-      a.addEventListener('click', (e) => {
-        const target = document.querySelector(a.getAttribute('href'));
-        if (!target) return;
-        e.preventDefault();
-        const stuck = getComputedStyle(menuNav).position === 'sticky';
-        const offset = -((header ? header.offsetHeight : 0) + (stuck ? menuNav.offsetHeight : 0) + 24);
-        if (Stage.lenis) Stage.lenis.scrollTo(target, { offset });
-        else window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY + offset, behavior: reduced() ? 'auto' : 'smooth' });
-        history.replaceState(null, '', a.getAttribute('href'));
-      });
+    let triggers = [];
+    menuNav.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href^="#"]');
+      const target = a && document.querySelector(a.getAttribute('href'));
+      if (!target) return;
+      e.preventDefault();
+      const stuck = getComputedStyle(menuNav).position === 'sticky';
+      const offset = -((header ? header.offsetHeight : 0) + (stuck ? menuNav.offsetHeight : 0) + 24);
+      if (Stage.lenis) Stage.lenis.scrollTo(target, { offset });
+      else window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY + offset, behavior: reduced() ? 'auto' : 'smooth' });
+      history.replaceState(null, '', a.getAttribute('href'));
     });
-    const chips = menuNav.querySelector('ul');
-    document.querySelectorAll('.cat').forEach((cat) => {
-      const link = menuNav.querySelector(`a[href="#${cat.id}"]`);
-      ScrollTrigger.create({
-        trigger: cat, start: 'top 40%', end: 'bottom 40%',
-        onToggle: (self) => {
-          if (!link) return;
-          link.classList.toggle('is-current', self.isActive);
-          // Bring the chip into view inside the bar only. scrollIntoView would also scroll the page,
-          // and on phones (where the bar is not sticky) it pulled the reader back up to the bar.
-          if (self.isActive && chips.scrollWidth > chips.clientWidth) {
-            chips.scrollTo({ left: link.offsetLeft - (chips.clientWidth - link.offsetWidth) / 2, behavior: 'smooth' });
-          }
-        },
+    const bindCategories = () => {
+      triggers.forEach((t) => t.kill());
+      const chips = menuNav.querySelector('ul');
+      triggers = [...document.querySelectorAll('.cat')].map((cat) => {
+        const link = menuNav.querySelector(`a[href="#${cat.id}"]`);
+        return ScrollTrigger.create({
+          trigger: cat, start: 'top 40%', end: 'bottom 40%',
+          onToggle: (self) => {
+            if (!link) return;
+            link.classList.toggle('is-current', self.isActive);
+            // Bring the chip into view inside the bar only. scrollIntoView would also scroll the page,
+            // and on phones (where the bar is not sticky) it pulled the reader back up to the bar.
+            if (self.isActive && chips.scrollWidth > chips.clientWidth) {
+              chips.scrollTo({ left: link.offsetLeft - (chips.clientWidth - link.offsetWidth) / 2, behavior: 'smooth' });
+            }
+          },
+        });
       });
-    });
+    };
+    bindCategories();
+    document.addEventListener('cm:menu', bindCategories);
   }
 
   // ---------- Marquee band: speeds up with the scroll, turns with it ----------

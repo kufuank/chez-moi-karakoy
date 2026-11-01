@@ -1,0 +1,19 @@
+{
+  "events": [
+    {
+      "id": "eea40f3b6",
+      "title": "TEST Taslak",
+      "date": "2026-11-08",
+      "time": "22:00",
+      "floor": "ikisi",
+      "genres": [],
+      "lineup": [],
+      "description": "",
+      "ticketUrl": "",
+      "guestlist": true,
+      "capacity": null,
+      "published": false,
+      "poster": null
+    }
+  ]
+}

@@ -1,18 +1,14 @@
 {
   "name": "chez-moi-karakoy",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Chez Moi Karaköy web sitesi ve menü yönetim paneli",
-  "main": "server.js",
+  "description": "Chez Moi Karaköy web sitesi (restoran ve kulüp) — GitHub Pages'te statik, veriler Supabase'de",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "build": "node build.mjs",
+    "dev": "node build.mjs && node serve.mjs"
   },
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "express": "^4.21.2"
   }
 }

@@ -1,4 +1,4 @@
-// Chez Moi — menu admin: categories and items, edited in place and saved to /api.
+// Chez Moi — menu admin: categories and items, edited in place. Data calls go through window.CMBackend (backend.js).
 (() => {
   const $ = (sel, root = document) => root.querySelector(sel);
   const state = { categories: [], items: [], query: '' };
@@ -12,19 +12,12 @@
   const catName = (id) => state.categories.find((c) => c.id === id)?.name ?? '';
 
   async function api(method, url, body) {
-    const res = await fetch(url, {
-      method,
-      headers: body ? { 'Content-Type': 'application/json' } : {},
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: 'same-origin',
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 401 && url !== '/api/login') {
-      showLogin('Oturumun süresi doldu. Lütfen yeniden giriş yap.');
-      throw new Error(data.error || 'Oturum kapandı');
+    try {
+      return await window.CMBackend.api(method, url, body);
+    } catch (err) {
+      if (err.status === 401 && url !== '/api/login') showLogin('Oturumun süresi doldu. Lütfen yeniden giriş yap.');
+      throw err;
     }
-    if (!res.ok) throw new Error(data.error || 'Bir sorun oluştu. Tekrar dene.');
-    return data;
   }
 
   // ---------- toast ----------
@@ -57,18 +50,21 @@
     $('#login').hidden = false;
     $('#login-error').textContent = message;
     $('#password').value = '';
-    $('#password').focus();
+    ($('#email').value ? $('#password') : $('#email')).focus();
   }
 
   $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = $('#password');
+    const email = $('#email');
     const err = $('#login-error');
+    if (!email.value.trim()) { err.textContent = 'E-posta adresini gir.'; email.setAttribute('aria-invalid', 'true'); email.focus(); return; }
     if (!input.value) { err.textContent = 'Şifreyi gir.'; input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+    email.removeAttribute('aria-invalid');
     const btn = e.submitter || $('#login-form button');
     btn.disabled = true;
     try {
-      await api('POST', '/api/login', { password: input.value });
+      await api('POST', '/api/login', { email: email.value, password: input.value });
       input.removeAttribute('aria-invalid');
       await start();
     } catch (error) {
@@ -467,7 +463,7 @@
   });
 
   // ---------- boot ----------
-  fetch('/api/session', { credentials: 'same-origin' })
-    .then((r) => (r.ok ? start() : showLogin()))
-    .catch(() => showLogin('Sunucuya ulaşılamadı. Sayfayı yenile.'));
+  window.CMBackend.api('GET', '/api/session')
+    .then(() => start())
+    .catch((err) => showLogin(err.status === 403 ? err.message : ''));
 })();
