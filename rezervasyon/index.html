@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="tr" data-base="/chez-moi-karakoy">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rezervasyon · Chez Moi Karaköy</title>
+  <meta name="description" content="Chez Moi Karaköy için masa ayırtın. Talebinizi alıp sizi arayarak onaylıyoruz.">
+  <meta name="theme-color" content="#171513">
+  <meta property="og:title" content="Rezervasyon · Chez Moi Karaköy">
+  <meta property="og:description" content="Chez Moi Karaköy için masa ayırtın. Talebinizi alıp sizi arayarak onaylıyoruz.">
+  <meta property="og:image" content="/chez-moi-karakoy/img/hero-hall.jpg">
+  <meta property="og:locale" content="tr_TR">
+  <link rel="icon" href="/chez-moi-karakoy/img/favicon.svg" type="image/svg+xml">
+  <script>document.documentElement.classList.add('js')</script>
+  <link rel="preconnect" href="https://api.fontshare.com">
+  <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=gambarino@400&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/chez-moi-karakoy/scenes/stage.css">
+  <link rel="stylesheet" href="/chez-moi-karakoy/css/site.css">
+  <link rel="stylesheet" href="/chez-moi-karakoy/css/club.css">
+  
+</head>
+<body data-page="rezervasyon" data-theme="restaurant">
+  <a class="skip sr-only" href="#icerik">İçeriğe geç</a>
+
+  <header class="site-header" data-header>
+    <a class="logo" href="/chez-moi-karakoy/restoran/" aria-label="Chez Moi Karaköy, anasayfa">
+      <img class="logo-dark" src="/chez-moi-karakoy/img/src/CHEZ-LOGO-b.png" width="283" height="146" alt="">
+      <img class="logo-light" src="/chez-moi-karakoy/img/src/CHEZ-LOGO.png" width="283" height="146" alt="">
+    </a>
+    <nav class="site-nav" id="site-nav" aria-label="Ana menü">
+      <ul><li><a href="/chez-moi-karakoy/hakkimizda/">Hakkımızda</a></li><li><a href="/chez-moi-karakoy/menu/">Menü</a></li><li><a href="/chez-moi-karakoy/galeri/">Galeri</a></li><li><a href="/chez-moi-karakoy/iletisim/">İletişim</a></li><li><a href="/chez-moi-karakoy/kulup/">Kulüp</a></li></ul>
+      <a class="button button--small" href="/chez-moi-karakoy/rezervasyon/">Rezervasyon</a>
+    </nav>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+      <span class="nav-toggle-open">Menü</span><span class="nav-toggle-close">Kapat</span>
+    </button>
+  </header>
+
+  <main id="icerik">
+    <section class="page-hero page-hero--short" aria-labelledby="page-title">
+      <div class="page-hero-text">
+        <h1 class="page-title" id="page-title">Rezervasyon</h1>
+        <p class="page-lede">Masanızı ayırtın; talebinizi alıp sizi arayarak onaylıyoruz. Acele bir şey için: <a href="tel:+905496003536">0549 600 35 36</a></p>
+      </div>
+      <div class="collage page-collage" aria-hidden="true">
+        <figure class="print rh-a" data-speed="0.15" data-spin="-4"><img src="/chez-moi-karakoy/img/torn/hall-tables.png" width="937" height="644" alt=""><span class="tape tape--top"></span></figure>
+        <img class="cut rh-b" src="/chez-moi-karakoy/img/cut/fettuccine.png" width="1361" height="1361" alt="" data-speed="-0.2" data-spin="30">
+      </div>
+    </section>
+
+    <section class="booking" aria-labelledby="booking-title">
+      <h2 class="sr-only" id="booking-title">Rezervasyon formu</h2>
+      <form class="form booking-form" id="booking-form" novalidate>
+        <div class="field-row field-row--3">
+          <div class="field"><label for="b-date">Tarih</label><input id="b-date" name="date" type="date" required min="2026-11-02" max="2027-01-31" value="2026-11-02" aria-describedby="b-error"></div>
+          <div class="field"><label for="b-time">Saat</label>
+            <select id="b-time" name="time" required aria-describedby="b-error">
+              <option>12:00</option><option>12:30</option><option>13:00</option><option>13:30</option><option>14:00</option><option>14:30</option>
+              <option>15:00</option><option>15:30</option><option>16:00</option><option>16:30</option><option>17:00</option><option>17:30</option>
+              <option>18:00</option><option>18:30</option><option>19:00</option><option>19:30</option><option selected>20:00</option><option>20:30</option>
+              <option>21:00</option><option>21:30</option><option>22:00</option><option>22:30</option><option>23:00</option>
+            </select>
+          </div>
+          <div class="field"><label for="b-people">Kişi</label>
+            <select id="b-people" name="people" aria-describedby="b-error">
+              <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+              <option>9</option><option>10</option><option>12</option><option>15</option><option>20</option>
+            </select>
+          </div>
+        </div>
+        <fieldset class="field choice">
+          <legend>Nerede oturmak istersiniz?</legend>
+          <label><input type="radio" name="area" value="farketmez" checked> <span>Fark etmez</span></label>
+          <label><input type="radio" name="area" value="restoran"> <span>Restoran</span></label>
+          <label><input type="radio" name="area" value="teras"> <span>Teras meyhane</span></label>
+        </fieldset>
+        <div class="field-row">
+          <div class="field"><label for="b-name">Ad soyad</label><input id="b-name" name="name" autocomplete="name" required maxlength="80" aria-describedby="b-error"></div>
+          <div class="field"><label for="b-phone">Telefon</label><input id="b-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="05XX XXX XX XX" aria-describedby="b-error"></div>
+        </div>
+        <div class="field"><label for="b-email">E-posta <span class="optional">(isteğe bağlı)</span></label><input id="b-email" name="email" type="email" autocomplete="email" maxlength="120" aria-describedby="b-error"></div>
+        <div class="field"><label for="b-note">Not <span class="optional">(doğum günü, alerji, bebek sandalyesi…)</span></label><textarea id="b-note" name="note" rows="3" maxlength="400"></textarea></div>
+        <div class="hp" aria-hidden="true"><label>Web sitesi <input name="website" tabindex="-1" autocomplete="off"></label></div>
+        <label class="check"><input type="checkbox" name="consent" required aria-describedby="b-error"> <span>Bilgilerimin bu rezervasyon için kullanılmasını kabul ediyorum. <a href="/chez-moi-karakoy/gizlilik" target="_blank">Ayrıntılar</a></span></label>
+        <p class="form-error" id="b-error" role="alert"></p>
+        <button class="button" type="submit">Rezervasyon talebi gönder</button>
+      </form>
+      <div class="form-done" id="booking-done" hidden tabindex="-1">
+        <h2 class="display">Talebiniz alındı</h2>
+        <p>Kısa süre içinde sizi arayarak rezervasyonunuzu onaylayacağız. Görüşmek üzere.</p>
+        <a class="button button--paper" href="/chez-moi-karakoy/menu">Menüye göz atın</a>
+      </div>
+      <aside class="booking-aside" aria-label="Rezervasyon bilgisi">
+        <figure class="print booking-print" data-speed="0.1" data-spin="-3"><img src="/chez-moi-karakoy/img/torn/coffee-menu.png" width="1200" height="1475" alt="Masada kahve ve Chez Moi menüsü" loading="lazy"><span class="tape tape--top"></span></figure>
+        <p class="head">Bilmeniz gerekenler</p>
+        <ul>
+          <li>Her gün 12:00 – 05:00 açığız.</li>
+          <li>Talebiniz, sizi arayıp onayladığımızda kesinleşir.</li>
+          <li>20 kişiden kalabalık gruplar ve özel organizasyonlar için lütfen arayın: <a href="tel:+905496003536">0549 600 35 36</a>, <a href="tel:+905368573275">0536 857 32 75</a></li>
+          <li>Akşamları zemin kat ve roof bar kulübe dönüşür; gece etkinlikleri için <a href="/chez-moi-karakoy/kulup">kulüp sayfasına</a> bakın.</li>
+        </ul>
+      </aside>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-cols">
+      <div>
+        <p class="footer-first">Adres</p>
+        <p>Kemankeş Karamustafa Paşa Mah.<br>Mumhane Cad. No:36<br>Beyoğlu, İstanbul</p>
+      </div>
+      <div>
+        <p class="footer-first">Sayfalar</p>
+        <ul>
+          <li><a href="/chez-moi-karakoy/restoran">Restoran</a></li>
+          <li><a href="/chez-moi-karakoy/kulup">Kulüp</a></li>
+          <li><a href="/chez-moi-karakoy/menu">Menü</a></li>
+          <li><a href="/chez-moi-karakoy/rezervasyon">Rezervasyon</a></li>
+          <li><a href="/chez-moi-karakoy/iletisim">İletişim</a></li>
+          <li><a href="/chez-moi-karakoy/gizlilik">Kişisel veriler</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-first">Bize ulaşın</p>
+        <ul>
+          <li><a href="https://www.instagram.com/chezmoikarakoy/" rel="noopener" target="_blank">Instagram</a></li>
+          <li><a href="mailto:chezmoikarakoy@gmail.com">chezmoikarakoy@gmail.com</a></li>
+          <li><a href="tel:+905496003536">0549 600 35 36</a></li>
+          <li><a href="tel:+905368573275">0536 857 32 75</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-first">Saatler</p>
+        <p>Her gün<br>12:00 – 05:00</p>
+      </div>
+    </div>
+    <img class="footer-cut cut" src="/chez-moi-karakoy/img/cut/fettuccine.png" width="1361" height="1361" alt="" loading="lazy" data-speed="-0.25" data-spin="20">
+    <div class="footer-mark">
+      <svg viewBox="0 0 1000 214" role="img" aria-label="Chez Moi">
+        <text x="0" y="168">Chez Moi</text>
+      </svg>
+      <p class="legal">© <span data-year>2026</span> Chez Moi Karaköy</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+  <script src="/chez-moi-karakoy/scenes/stage.js"></script>
+  <script src="/chez-moi-karakoy/js/site.js"></script>
+  <script type="module" src="/chez-moi-karakoy/js/live.js"></script>
+</body>
+</html>
