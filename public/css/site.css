@@ -433,8 +433,11 @@ body[data-page="home"] .site-header:not(.is-solid) .logo-light { display: block;
   .restore-copy, .restore-frame { grid-column: 1; }
   .restore.is-live .restore-frame { justify-self: center; }
   .page-title { font-size: clamp(56px, 18vw, 140px); }
-  .menu-nav { position: static; }
-  .menu-nav ul { flex-wrap: wrap; overflow: visible; }
+  /* Phone category bar: one strip under the header that swipes sideways; the chip in view slides to the middle. */
+  .menu-nav ul { gap: 4px; padding: 10px var(--margin); scroll-snap-type: x proximity; overscroll-behavior-x: contain;
+    mask-image: linear-gradient(90deg, transparent, #000 var(--margin), #000 calc(100% - var(--margin)), transparent); }
+  .menu-nav li { scroll-snap-align: center; }
+  .menu-nav a { padding: 8px 14px; }
   .restore-copy { margin-bottom: 24px; }
   .map-frame { margin-top: 40px; }
   .footer-cols { grid-template-columns: 1fr 1fr; row-gap: 32px; }
